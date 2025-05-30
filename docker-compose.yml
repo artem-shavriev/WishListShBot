@@ -1,0 +1,10 @@
+services:
+  main-bot-db:
+    image: postgres:16.1
+    container_name: gift-bot-db-container
+    ports:
+      - "6432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+      POSTGRES_DB: gift-bot-db
