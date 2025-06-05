@@ -3,7 +3,7 @@ server:
 
 bot:
   name: GiftBot
-  token:
+  token: 8010819541:AAF-OlTPKF5NR0sakDRHxA10PDCX9e_nVhA
   owner: 253631987
 
 spring:
