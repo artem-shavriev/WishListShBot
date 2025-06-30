@@ -55,6 +55,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     static final String FRIEND_COMMAND = "/choose_friend";
     static final String ADD_COMMAND = "/add_to_wish_list";
     static final String WISH_LIST_COMMAND = "/wish_list";
+    static final String BOOKING_LIST_COMMAND = "/booking_list";
     static final String DELETE_GIFT_COMMAND = "/delete_gift";
     static final String DELETE_BOOKING_COMMAND = "/delete_booking";
 
@@ -67,6 +68,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             FRIEND_COMMAND + " \n\n" +
             ADD_COMMAND + " \n\n" +
             WISH_LIST_COMMAND + " \n\n" +
+            BOOKING_LIST_COMMAND + " \n\n" +
             DELETE_BOOKING_COMMAND + " \n\n" +
             DELETE_GIFT_COMMAND;
 
@@ -74,18 +76,15 @@ public class TelegramBot extends TelegramLongPollingBot {
     static final String FRIEND_BUTTON = "FRIEND_BUTTON";
     static final String CREATE_LIST_BUTTON = "CREATE_LIST_BUTTON";
     static final String GET_MY_GIFTS_BUTTON = "GET_MY_GIFTS_BUTTON";
-    static final String REPEAT_CREATE_LIST = "REPEAT_CREATE_LIST";
     static final String CHOOSE_GIFT = "CHOOSE_GIFT";
+    static final String CHOOSE_DELETING_GIFT = "CHOOSE_DELETING_GIFT";
     static final String CHOOSE_FRIEND = "CHOOSE_FRIEND";
-    static final String NO_BUTTON = "NO_BUTTON";
-    static final String YES_BUTTON = "YES_BUTTON";
     static final String BOOKING_BUTTON = "BOOKING_BUTTON";
     static final String GIFT_NAME = "GIFT_NAME";
-    static final String GIFT_URL = "GIFT_URL";
-    static final String ENTERING_GIFT_NAME_BUTTON = "ENTERING_GIFT_NAME_BUTTON";
-    static final String DELETE_GIFT = "DELETE_GIFT_COMMAND";
-    static final String DELETE_BOOKING = "DELETE_BOOKING_COMMAND";
-    static final String CANCEL_ADD_GIFT_BUTTON = "CANCEL_ADD_GIFT_BUTTON";
+    static final String DELETE_GIFT_BUTTON = "DELETE_GIFT_BUTTON";
+    static final String DELETE_BOOKING_BUTTON = "DELETE_BOOKING_BUTTON";
+    static final String CHOOSE_BOOKING_FOR_DELETE = " CHOOSE_BOOKING_FOR_DELETE";
+    static final String BOOKING_LIST_BUTTON = "BOOKING_LIST_BUTTON";
 
     String command = "";
     private Map<Long, Boolean> waitingForResponse = new HashMap<>();
@@ -107,11 +106,12 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         listOfCommands.add(new BotCommand(START_COMMAND, "Старт"));
         listOfCommands.add(new BotCommand(HELP_COMMAND, "Инструкция по использованию бота"));
-        listOfCommands.add(new BotCommand(FRIEND_COMMAND, "Кнопка для выбора друга"));
-        listOfCommands.add(new BotCommand(ADD_COMMAND, "Добавить подарок в список"));
+        listOfCommands.add(new BotCommand(FRIEND_COMMAND, "Кнопка для выбора подарка другу"));
+        listOfCommands.add(new BotCommand(ADD_COMMAND, "Добавить подарок в свой список желаний"));
         listOfCommands.add(new BotCommand(WISH_LIST_COMMAND, "Показать мой список желаний"));
-        listOfCommands.add(new BotCommand(DELETE_GIFT_COMMAND, "Удалить подарок из списка"));
-        listOfCommands.add(new BotCommand(DELETE_BOOKING_COMMAND, "Удалить подарок из брони"));
+        listOfCommands.add(new BotCommand(BOOKING_LIST_COMMAND, "Показать список моих броней"));
+        listOfCommands.add(new BotCommand(DELETE_GIFT_COMMAND, "Удалить подарок из моего списка желаний"));
+        listOfCommands.add(new BotCommand(DELETE_BOOKING_COMMAND, "Удалить бронь на подарок"));
 
         try {
             this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
@@ -181,12 +181,24 @@ public class TelegramBot extends TelegramLongPollingBot {
                                 "Пример:  \"Цветы-https://flowers/\"";
 
                         command = GIFT_NAME;
-
                         prepareAndSendMessage(chatId, text);
                         break;
                     case WISH_LIST_COMMAND:
                         getMyWishList(chatId, update.getMessage().getMessageId());
                         break;
+
+                    case BOOKING_LIST_COMMAND:
+                        getBookingList(chatId, update.getMessage().getMessageId());
+                        break;
+
+                    case DELETE_GIFT_COMMAND:
+                        chooseDeleteGift(chatId, update.getMessage().getMessageId());
+                        break;
+
+                    case DELETE_BOOKING_COMMAND:
+                        chooseBooking(chatId, update.getMessage().getMessageId());
+                        break;
+
                     default:
                         prepareAndSendMessage(chatId, "Извини, эта команда еще не поддерживатеся.");
                 }
@@ -200,6 +212,15 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (callBackData.equals(FRIEND_BUTTON)) {
                 getFriendList(chatId, messageId);
 
+            } else if (callBackData.equals(BOOKING_LIST_BUTTON)) {
+                getBookingList(chatId, messageId);
+
+            }else if (callBackData.equals(DELETE_GIFT_BUTTON)) {
+                chooseDeleteGift(chatId, messageId);
+
+            } else if (callBackData.equals(DELETE_BOOKING_BUTTON)) {
+                chooseBooking(chatId, messageId);
+
             } else if (callBackData.equals(GET_MY_GIFTS_BUTTON)) {
                 getMyWishList(chatId, messageId);
 
@@ -209,6 +230,30 @@ public class TelegramBot extends TelegramLongPollingBot {
 
                 command = GIFT_NAME;
                 executeMessageEditText(text, chatId, messageId);
+
+            } else if (callBackData.split("-")[0].equals(CHOOSE_DELETING_GIFT)) {
+                String giftName = callBackData.split("-")[1];
+                Gift gift = giftRepository.findByName(giftName)
+                        .orElseThrow(() -> new NotFoundException("Подарок для удаления не найден."));
+                giftRepository.delete(gift);
+
+                executeMessageEditText("Подарок: " + giftName + " удален", chatId, messageId);
+                log.info("Подарок: {} удален", giftName);
+
+            } else if (callBackData.split("-")[0].equals(CHOOSE_BOOKING_FOR_DELETE)) {
+                String giftName = callBackData.split("-")[1];
+
+                Gift gift = giftRepository.findByName(giftName)
+                        .orElseThrow(() -> new NotFoundException("Подарок для удаления не найден."));
+                GiftBookings booking = giftBookingsRepository.findByGiftId(gift.getId());
+
+                giftBookingsRepository.delete(booking);
+
+                gift.setAvailable(true);
+                giftRepository.save(gift);
+
+                executeMessageEditText("Бронь на подарок: " + giftName + " удалена", chatId, messageId);
+                log.info("Бронь на подарок {} удалена", giftName);
 
             } else if (callBackData.split("-")[0].equals(CHOOSE_FRIEND)) {
 
@@ -283,44 +328,6 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void getMyWishList(long chatId, long messageId) {
-
-        User user = userRepository.findById(chatId).orElseThrow(() -> new NotFoundException("Пользователь не найден"));
-
-        List<Gift> gifts = user.getUsersGifts();
-        if (gifts.isEmpty()) {
-            log.info("Cписок желаний пуст");
-            executeMessageEditText("Ваш список желаний пуст", chatId, messageId);
-        } else {
-            List<String> giftsNameList = gifts.stream().map(Gift::getName).toList();
-            executeMessageEditText(giftsNameList, chatId, messageId);
-        }
-    }
-
-    private void getFriendList(long chatId, long messageId) {
-        List<User> friends = userRepository.findAllByIdNot(chatId).get();
-
-        if (friends.isEmpty()) {
-            log.info("Список друзей пуст;");
-            executeMessageEditText("Список друзей пуст", chatId, messageId);
-        } else {
-            String text = "Список друзей появится ниже, выбери одного из списка";
-
-            List<String> friendsList = new ArrayList<>();
-
-            friends.stream().forEach(f -> friendsList.add(f.getUserName()));
-
-            InlineKeyboardMarkup prepareInlineKeyboardMarkup = keyboardButtonForFriendsList(friendsList);
-
-            SendMessage message = new SendMessage();
-            message.setChatId(chatId);
-            message.setText(text);
-
-            message.setReplyMarkup(prepareInlineKeyboardMarkup);
-            executeMessage(message);
-        }
-    }
-
     private void startCommandReceived(long chatId, String name) {
 
         String answer = EmojiParser.parseToUnicode("Привет " + name + "!" + " :blush: \n\n" +
@@ -344,36 +351,158 @@ public class TelegramBot extends TelegramLongPollingBot {
         List<InlineKeyboardButton> rowInLineCreateListButton = new ArrayList<>();
         List<InlineKeyboardButton> rowInLineFriendButton = new ArrayList<>();
         List<InlineKeyboardButton> rowInLineGetMyGifts = new ArrayList<>();
+        List<InlineKeyboardButton> rowInLineDeleteGift = new ArrayList<>();
+        List<InlineKeyboardButton> rowInLineDeleteBooking = new ArrayList<>();
+        List<InlineKeyboardButton> rowInLineBookingList = new ArrayList<>();
 
         var friendButton = new InlineKeyboardButton();
-
         friendButton.setText("Выбрать подарок другу");
         friendButton.setCallbackData(FRIEND_BUTTON);
 
         var createListButton = new InlineKeyboardButton();
-
         createListButton.setText("Добавить подарок себе в список");
         createListButton.setCallbackData(CREATE_LIST_BUTTON);
 
         var createGetMyGiftsButton = new InlineKeyboardButton();
-
         createGetMyGiftsButton.setText("Посмотреть свой список желаний");
         createGetMyGiftsButton.setCallbackData(GET_MY_GIFTS_BUTTON);
 
+        var createBookingListButton = new InlineKeyboardButton();
+        createBookingListButton.setText("Посмотреть список моих броней");
+        createBookingListButton.setCallbackData(BOOKING_LIST_BUTTON);
+
+        var createDeleteGiftButton = new InlineKeyboardButton();
+        createDeleteGiftButton.setText("Удалить подарок из списка желаний");
+        createDeleteGiftButton.setCallbackData(DELETE_GIFT_BUTTON);
+
+        var createDeleteBookingButton = new InlineKeyboardButton();
+        createDeleteBookingButton.setText("Удалить бронь на подарок");
+        createDeleteBookingButton.setCallbackData(DELETE_BOOKING_BUTTON);
 
         rowInLineFriendButton.add(friendButton);
         rowInLineCreateListButton.add(createListButton);
         rowInLineGetMyGifts.add(createGetMyGiftsButton);
+        rowInLineBookingList.add(createBookingListButton);
+        rowInLineDeleteGift.add(createDeleteGiftButton);
+        rowInLineDeleteBooking.add(createDeleteBookingButton);
 
         rowsInLine.add(rowInLineFriendButton);
         rowsInLine.add(rowInLineCreateListButton);
         rowsInLine.add(rowInLineGetMyGifts);
+        rowsInLine.add(rowInLineBookingList);
+        rowsInLine.add(rowInLineDeleteGift);
+        rowsInLine.add(rowInLineDeleteBooking);
 
         inlineKeyboardMarkup.setKeyboard(rowsInLine);
 
         message.setReplyMarkup(inlineKeyboardMarkup);
 
         executeMessage(message);
+    }
+
+    private void chooseBooking(long chatId, long messageId) {
+        User user = userRepository.findById(chatId).orElseThrow(() -> new NotFoundException("Пользователь не найден"));
+
+        List<GiftBookings> bookings = giftBookingsRepository.findByUserId(user.getId());
+
+        if (bookings.isEmpty()) {
+            log.info("Cписок броней для пользователья {} пуст", user.getUserName());
+            executeMessageEditText("Ты еще не бронировал подарок другу.", chatId, messageId);
+        } else {
+            String text = "Выбери забронированный подарок для отмены брони на него";
+
+            List<Long> bookingGiftsId = bookings.stream().map(b -> b.getGiftId()).toList();
+
+            List<String> giftsNameList = giftRepository.findAllByIdList(bookingGiftsId);
+
+            InlineKeyboardMarkup prepareInlineKeyboardMarkup = keyboardButtonsList(giftsNameList,
+                    CHOOSE_BOOKING_FOR_DELETE);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(text);
+
+            message.setReplyMarkup(prepareInlineKeyboardMarkup);
+            executeMessage(message);
+        }
+    }
+
+    private void chooseDeleteGift(long chatId, long messageId) {
+        User user = userRepository.findById(chatId).orElseThrow(() -> new NotFoundException("Пользователь не найден"));
+
+        List<Gift> gifts = userRepository.findUsersGiftsByAvailable(true, user.getUserName());
+
+        if (gifts.isEmpty()) {
+            log.info("Cписок желаний пуст");
+            executeMessageEditText("Твой список желаний пуст или все подарки забронированы.", chatId, messageId);
+        } else {
+            String text = "Выбери подарок для удаления:";
+
+            List<String> giftNameList = gifts.stream().map(Gift::getName).toList();
+
+            InlineKeyboardMarkup prepareInlineKeyboardMarkup = keyboardButtonsList(giftNameList, CHOOSE_DELETING_GIFT);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(text);
+
+            message.setReplyMarkup(prepareInlineKeyboardMarkup);
+            executeMessage(message);
+        }
+    }
+
+    private void getMyWishList(long chatId, long messageId) {
+        User user = userRepository.findById(chatId).orElseThrow(() -> new NotFoundException("Пользователь не найден"));
+
+        List<Gift> gifts = user.getUsersGifts();
+        if (gifts.isEmpty()) {
+            log.info("Cписок желаний пуст");
+            executeMessageEditText("Ваш список желаний пуст", chatId, messageId);
+        } else {
+            List<String> giftsNameList = gifts.stream().map(Gift::getName).toList();
+            executeMessageEditText(giftsNameList, chatId);
+        }
+    }
+
+    private void getBookingList(long chatId, long messageId) {
+        User user = userRepository.findById(chatId).orElseThrow(() -> new NotFoundException("Пользователь не найден"));
+
+        List<GiftBookings> bookings = giftBookingsRepository.findByUserId(user.getId());
+
+        if (bookings.isEmpty()) {
+            log.info("Cписок броней для пользователья {} пуст", user.getUserName());
+            executeMessageEditText("Ты еще не бронировал подарок другу.", chatId, messageId);
+        } else {
+            List<Long> bookingGiftsId = bookings.stream().map(b -> b.getGiftId()).toList();
+
+            List<String> giftsNameList = giftRepository.findAllByIdList(bookingGiftsId);
+
+            executeMessageEditText(giftsNameList, chatId);
+        }
+    }
+
+    private void getFriendList(long chatId, long messageId) {
+        List<User> friends = userRepository.findAllByIdNot(chatId).get();
+
+        if (friends.isEmpty()) {
+            log.info("Список друзей пуст;");
+            executeMessageEditText("Список друзей пуст", chatId, messageId);
+        } else {
+            String text = "Выбери друга из списка:";
+
+            List<String> friendsList = new ArrayList<>();
+
+            friends.stream().forEach(f -> friendsList.add(f.getUserName()));
+
+            InlineKeyboardMarkup prepareInlineKeyboardMarkup = keyboardButtonsList(friendsList, CHOOSE_FRIEND);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(text);
+
+            message.setReplyMarkup(prepareInlineKeyboardMarkup);
+            executeMessage(message);
+        }
     }
 
     private boolean addGift(long chatId, String giftName, String giftUrl) {
@@ -430,16 +559,16 @@ public class TelegramBot extends TelegramLongPollingBot {
         executeMessage(message);
     }
 
-    private InlineKeyboardMarkup keyboardButtonForFriendsList(List<String> friendsUserNames) {
+    private InlineKeyboardMarkup keyboardButtonsList(List<String> buttonsList, String callbackData) {
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
 
         List<List<InlineKeyboardButton>> rowsInLine = new ArrayList<>();
 
-        for (String userName : friendsUserNames) {
+        for (String buttonName : buttonsList) {
             var button = new InlineKeyboardButton();
 
-            button.setText(userName);
-            button.setCallbackData(CHOOSE_FRIEND + "-" + userName);
+            button.setText(buttonName);
+            button.setCallbackData(callbackData + "-" + buttonName);
 
             List<InlineKeyboardButton> rowInLine = new ArrayList<>();
             rowInLine.add(button);
@@ -523,11 +652,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void executeMessageEditText(List<String> listOfText, long chatId, long messageId) {
+    private void executeMessageEditText(List<String> listOfText, long chatId) {
         SendMessage message = new SendMessage();
 
         StringBuilder text = new StringBuilder();
-        listOfText.forEach(t -> text.append(t).append("\n"));
+        listOfText.forEach(t -> text.append("- ").append(t).append("\n")
+                .append("------------------------------").append("\n"));
 
         message.setChatId(chatId);
         message.setText(String.valueOf(text));
