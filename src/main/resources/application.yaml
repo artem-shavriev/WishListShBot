@@ -4,7 +4,7 @@ server:
 bot:
   name: GiftBot
   token:
-  owner: 253631987
+  owner:
 
 spring:
   application:
