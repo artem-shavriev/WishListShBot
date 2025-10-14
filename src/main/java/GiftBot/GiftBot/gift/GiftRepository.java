@@ -14,4 +14,7 @@ public interface GiftRepository extends JpaRepository<Gift, Long> {
 
     @Query("SELECT g.name FROM Gift g WHERE g.id IN :ids")
     List<String> findAllByIdList(@Param("ids") List<Long> ids);
+
+    @Query("SELECT g FROM Gift g WHERE g.id IN :ids")
+    List<Gift> findAllGiftsByIdList(@Param("ids") List<Long> ids);
 }

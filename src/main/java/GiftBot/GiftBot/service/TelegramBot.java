@@ -459,7 +459,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.info("Cписок желаний пуст");
             executeMessageEditText("Ваш список желаний пуст", chatId, messageId);
         } else {
-            List<String> giftsNameList = gifts.stream().map(Gift::getName).toList();
+            int number = 0;
+            List<String> giftsNameList = gifts.stream().map(g -> g.getName() + " - " + g.getLink()).toList();
             executeMessageEditText(giftsNameList, chatId);
         }
     }
@@ -475,7 +476,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else {
             List<Long> bookingGiftsId = bookings.stream().map(b -> b.getGiftId()).toList();
 
-            List<String> giftsNameList = giftRepository.findAllByIdList(bookingGiftsId);
+            List<Gift> giftsList = giftRepository.findAllGiftsByIdList(bookingGiftsId);
+
+            List<String> giftsNameList = giftsList.stream().map(g -> g.getName() + " - " + g.getLink()).toList();
 
             executeMessageEditText(giftsNameList, chatId);
         }
