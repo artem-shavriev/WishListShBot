@@ -5,6 +5,11 @@ services:
     ports:
       - "6432:5432"
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: user
+      POSTGRES_PASSWORD: postgres
+      # POSTGRES_USER: postgres #пароль задается только для пользователя postgres по этому можно не указывать юзера она автоматически postgres
+      #Так же легкие пароли могут игнорироваться к примеру: 0000
       POSTGRES_DB: gift-bot-db
+
+      #Переменная POSTGRES_PASSWORD устанавливает
+      #пароль для пользователя postgres,
+      #а не для пользователя указанного в POSTGRES_USER.

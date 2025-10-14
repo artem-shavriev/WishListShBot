@@ -3,8 +3,8 @@ server:
 
 bot:
   name: GiftBot
-  token:
-  owner:
+  token: 7949198317:AAGuJI6KwUHseDJ5yoAHQ76_cFu2baFuL0c
+  owner: 253631987
 
 spring:
   application:
@@ -22,5 +22,5 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:6432/gift-bot-db
     driver-class-name: org.postgresql.Driver
-    username: user
-    password: user
+    username: postgres
+    password: postgres
